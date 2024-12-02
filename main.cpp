@@ -22,6 +22,11 @@ void setTextureParameters(unsigned texture, const unsigned i);
 static void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos);
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 
+enum RadioMode {
+    AM = 0,
+    FM = 1
+};
+
 float scalePos = 0.0;
 
 int main(void)
@@ -107,7 +112,32 @@ int main(void)
         0.6,  -0.33,   0.0, 0.0,
         0.68, -0.33,   1.0, 0.0,
         0.6,  -0.2,   0.0, 1.0,
-        0.68, -0.2,   1.0, 1.0
+        0.68, -0.2,   1.0, 1.0,
+
+        // Display screen
+       -0.10, -0.35,   0.0, 0.0,
+        0.40, -0.35,   1.0, 0.0,
+       -0.10,  0.08,   0.0, 1.0,
+        0.40,  0.08,   1.0, 1.0,
+
+        // Slider bar
+       -0.05, -0.3,    0.0, 1.0,
+        0.35, -0.3,    1.0, 1.0,
+       -0.05, -0.4 ,   0.0, 0.8,
+        0.35, -0.4 ,   1.0, 0.8,
+
+        // Slider button
+       -0.05, -0.28,    0.0, 1.0,
+        0.0 , -0.28,    0.2, 1.0,
+       -0.05, -0.38 ,   0.0, 0.8,
+        0.0 , -0.38 ,   0.2, 0.8,
+
+        // Mode AM/FM
+        0.43, -0.12,     0.0, 0.0,
+        0.67, -0.12,     1.0, 0.0,
+        0.43, -0.04,     0.0, 1.0,
+        0.67, -0.04,     1.0, 1.0,
+
     };
 
     unsigned int indices[] = {
@@ -131,7 +161,19 @@ int main(void)
         22,
 
         23, 24, 25,
-        24, 25, 26
+        24, 25, 26,
+
+        27, 28, 29,
+        28, 29, 30,
+
+        31, 32, 33,
+        32, 33, 34,
+
+        35, 36, 37,
+        36, 37, 38,
+
+        39, 40, 41,
+        40, 41, 42
     };
     // notacija koordinata za teksture je STPQ u GLSL-u (ali se cesto koristi UV za 2D teksture i STR za 3D)
     //ST koordinate u nizu tjemena su koordinate za teksturu i krecu se od 0 do 1, gdje je 0, 0 donji lijevi ugao teksture
@@ -159,13 +201,18 @@ int main(void)
     glBindVertexArray(0);
 
     const char* texturePaths[] = {
-        "res/radio.png",
+        "res/radio-cropped.png",
         "res/signature-text.png",
         "res/speaker-membrane.png",
         "res/protective-cover2.png",
         "res/am-fm-scale.png",
         "res/radio-on.png",
-        "res/radio-off.png"
+        "res/radio-off.png",
+        "res/display-screen.png",
+        "res/slider-bar.png",
+        "res/slider-button.png",
+        "res/mode-am.png",
+        "res/mode-fm.png"
     };
 
     unsigned radioTexture = loadImageToTexture(texturePaths[0]);
@@ -182,7 +229,16 @@ int main(void)
     setTextureParameters(radioOnTexture, 5);
     unsigned radioOffTexture = loadImageToTexture(texturePaths[6]);
     setTextureParameters(radioOffTexture, 6);
-
+    unsigned displayScreenTexture = loadImageToTexture(texturePaths[7]);
+    setTextureParameters(displayScreenTexture, 7);
+    unsigned sliderBarTexture = loadImageToTexture(texturePaths[8]);
+    setTextureParameters(sliderBarTexture, 8);
+    unsigned sliderButtonTexture = loadImageToTexture(texturePaths[9]);
+    setTextureParameters(sliderButtonTexture, 9);
+    unsigned modeAMTexture = loadImageToTexture(texturePaths[10]);
+    setTextureParameters(modeAMTexture, 10);
+    unsigned modeFMTexture = loadImageToTexture(texturePaths[11]);
+    setTextureParameters(modeFMTexture, 11);
 
     glUseProgram(unifiedShader);
     unsigned uTexLoc = glGetUniformLocation(unifiedShader, "uTex");
@@ -218,9 +274,30 @@ int main(void)
     float lastTime = 0.0f;
     bool isTurnedOn = false, wasMousePressed = false;
     double xpos, ypos;
+    RadioMode mode = RadioMode::AM;
     while (!glfwWindowShouldClose(window))
     {
         int mouseState = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
+        if (mouseState == GLFW_PRESS)
+        {
+            // -0.12, -0.04
+            // 1165, 559
+            glfwGetCursorPos(window, &xpos, &ypos);
+            std::cout << mode << std::endl;
+            std::cout << xpos << std::endl;
+            std::cout << ypos << std::endl;
+            if (xpos >= 1072 && xpos <= 1165 && ypos >= 520 && ypos <= 559)
+            {
+                mode = RadioMode::AM;
+                std::cout << mode << std::endl;
+            }
+            if (xpos >= 1165 && xpos <= 1252 && ypos >= 520 && ypos <= 559)
+            {
+                mode = RadioMode::FM;
+                std::cout << mode << std::endl;
+            }
+        }
+
         if (mouseState == GLFW_PRESS && !wasMousePressed)
         {
             glfwGetCursorPos(window, &xpos, &ypos);
@@ -352,6 +429,21 @@ int main(void)
             glBindTexture(GL_TEXTURE_2D, radioOffTexture);
 
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(33 * sizeof(unsigned int)));
+
+        glBindTexture(GL_TEXTURE_2D, displayScreenTexture);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(39 * sizeof(unsigned int)));
+
+        glBindTexture(GL_TEXTURE_2D, sliderBarTexture);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(45 * sizeof(unsigned int)));
+
+        glBindTexture(GL_TEXTURE_2D, sliderButtonTexture);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(51 * sizeof(unsigned int)));
+
+        if (mode == RadioMode::AM)
+            glBindTexture(GL_TEXTURE_2D, modeAMTexture);
+        else
+            glBindTexture(GL_TEXTURE_2D, modeFMTexture);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(57 * sizeof(unsigned int)));
 
         glBindTexture(GL_TEXTURE_2D, 0);
         glBindVertexArray(0);
