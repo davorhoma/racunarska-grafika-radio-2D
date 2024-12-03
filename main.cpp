@@ -14,6 +14,10 @@
 //Potrebno je definisati STB_IMAGE_IMPLEMENTATION prije njenog ukljucivanja
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#include <thread>
+#include <chrono>
+#include "headers/frame_limitter.h"
+#include "headers/slider.h"
 
 unsigned int compileShader(GLenum type, const char* source);
 unsigned int createShader(const char* vsSource, const char* fsSource);
@@ -70,6 +74,8 @@ int main(void)
     unsigned int membraneShader = createShader("shaders/membrane.vert", "shaders/membrane.frag");
     unsigned int scalePointerShader = createShader("shaders/scale-pointer.vert", "shaders/scale-pointer.frag");
     unsigned int powerIndicatorShader = createShader("shaders/power-indicator.vert", "shaders/power-indicator.frag");
+    unsigned int sliderButtonShader = createShader("shaders/slider-button.vert", "shaders/slider-button.frag");
+    unsigned int antennaShader = createShader("shaders/antenna.vert", "shaders/antenna.frag");
 
     float vertices[] =
     {   //X    Y      S    T 
@@ -138,6 +144,11 @@ int main(void)
         0.43, -0.04,     0.0, 1.0,
         0.67, -0.04,     1.0, 1.0,
 
+        // Antenna
+        0.65, 0.3,        0.0, 0.0,
+        0.70, 0.3,        1.0, 0.0,
+        0.65, 0.8,        0.0, 1.0,
+        0.70, 0.8,        1.0, 1.0
     };
 
     unsigned int indices[] = {
@@ -173,7 +184,10 @@ int main(void)
         36, 37, 38,
 
         39, 40, 41,
-        40, 41, 42
+        40, 41, 42,
+
+        43, 44, 45,
+        44, 45, 46
     };
     // notacija koordinata za teksture je STPQ u GLSL-u (ali se cesto koristi UV za 2D teksture i STR za 3D)
     //ST koordinate u nizu tjemena su koordinate za teksturu i krecu se od 0 do 1, gdje je 0, 0 donji lijevi ugao teksture
@@ -212,7 +226,10 @@ int main(void)
         "res/slider-bar.png",
         "res/slider-button.png",
         "res/mode-am.png",
-        "res/mode-fm.png"
+        "res/mode-fm.png",
+        "res/antenna2.png",
+        "res/antenna-static.png",
+        "res/antenna-dynamic.png",
     };
 
     unsigned radioTexture = loadImageToTexture(texturePaths[0]);
@@ -239,6 +256,12 @@ int main(void)
     setTextureParameters(modeAMTexture, 10);
     unsigned modeFMTexture = loadImageToTexture(texturePaths[11]);
     setTextureParameters(modeFMTexture, 11);
+    unsigned antennaTexture = loadImageToTexture(texturePaths[12]);
+    setTextureParameters(antennaTexture, 12);
+    unsigned antennaStaticTexture = loadImageToTexture(texturePaths[13]);
+    setTextureParameters(antennaStaticTexture, 13);
+    unsigned antennaDynamicTexture = loadImageToTexture(texturePaths[14]);
+    setTextureParameters(antennaDynamicTexture, 14);
 
     glUseProgram(unifiedShader);
     unsigned uTexLoc = glGetUniformLocation(unifiedShader, "uTex");
@@ -257,6 +280,13 @@ int main(void)
     glUseProgram(scalePointerShader);
     unsigned uScalePosLoc = glGetUniformLocation(scalePointerShader, "uScalePos");
 
+    //glUseProgram(sliderButtonShader);
+    //unsigned uSliderPosition = glGetUniformLocation(sliderButtonShader, "uSlider");
+    unsigned uSliderPosition = glGetUniformLocation(sliderButtonShader, "uSlider");
+    
+    glUseProgram(antennaShader);
+    unsigned uAntennaPosition = glGetUniformLocation(antennaShader, "uAntennaPosition");
+
     glUseProgram(0);
     //Odnosi se na glActiveTexture(GL_TEXTURE0) u render petlji
     //Moguce je sabirati indekse, tj GL_TEXTURE5 se moze dobiti sa GL_TEXTURE0 + 5 , sto je korisno za iteriranje kroz petlje
@@ -271,31 +301,108 @@ int main(void)
     unsigned vibrationIntensity = 0;
     bool upPressed = false, downPressed = false;
     //float scalePos = 0;
-    float lastTime = 0.0f;
     bool isTurnedOn = false, wasMousePressed = false;
     double xpos, ypos;
     RadioMode mode = RadioMode::AM;
+    //int sliderButtonXstart = 712;
+    //int sliderButtonXend = 745;
+    int sliderButtonYstart = 640;
+    int sliderButtonYend = 663;
+    int sliderButtonXcurrentStart = 712;
+    int sliderButtonXcurrentEnd = 745;
+    float oldMoveValue = 0.0, moveValue = 0.0;
+
+    double prevXpos = 0.0, prevYpos = 0.0;
+    bool firstFrame = true;
+    const float minSliderValue = -1.0f;
+    const float maxSliderValue = 1.0f;
+    bool holdingSlider = false;
+
+    float antennaMove = -0.4;
+    bool antennaMoving = false;
+
+    const double FRAME_DURATION = 1.0 / 60.0;
+    double lastTime = glfwGetTime();
+
+    Slider slider = Slider(sliderButtonXcurrentStart, sliderButtonXcurrentEnd, sliderButtonYstart, sliderButtonYend, wWidth);
+
     while (!glfwWindowShouldClose(window))
     {
+        limitFrameRate(FRAME_DURATION, &lastTime);
+
         int mouseState = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
+        //double xCurrentpos, yCurrentpos;
+        glfwGetCursorPos(window, &xpos, &ypos);
+
+        if (firstFrame)
+        {
+            prevXpos = xpos;
+            prevYpos = ypos;
+            firstFrame = false;
+        }
+
         if (mouseState == GLFW_PRESS)
         {
-            // -0.12, -0.04
-            // 1165, 559
             glfwGetCursorPos(window, &xpos, &ypos);
-            std::cout << mode << std::endl;
-            std::cout << xpos << std::endl;
-            std::cout << ypos << std::endl;
-            if (xpos >= 1072 && xpos <= 1165 && ypos >= 520 && ypos <= 559)
+            if (!holdingSlider)
             {
-                mode = RadioMode::AM;
-                std::cout << mode << std::endl;
+                if (xpos >= 1072 && xpos <= 1165 && ypos >= 520 && ypos <= 559)
+                {
+                    mode = RadioMode::AM;
+                }
+                if (xpos >= 1165 && xpos <= 1252 && ypos >= 520 && ypos <= 559)
+                {
+                    mode = RadioMode::FM;
+                }
             }
-            if (xpos >= 1165 && xpos <= 1252 && ypos >= 520 && ypos <= 559)
+
+            glUseProgram(sliderButtonShader);
+            //moveValue += 0.0001;
+            if (slider.detectSliderMove(xpos, ypos, prevXpos, &holdingSlider))
             {
-                mode = RadioMode::FM;
-                std::cout << mode << std::endl;
+                glUniform1f(uSliderPosition, slider.getMoveValue());
             }
+            //if (xpos >= sliderButtonXcurrentStart && xpos <= sliderButtonXcurrentEnd && ypos >= sliderButtonYstart && ypos <= sliderButtonYend || holdingSlider)
+            //{
+            //    holdingSlider = true;
+            //    //glUseProgram(sliderButtonShader);
+            //    //unsigned uSliderPosition = glGetUniformLocation(sliderButtonShader, "uSlider");
+            //    //std::cout << uSliderPosition << xpos - sliderButtonXstart << std::endl;
+            //    float diff = xpos - prevXpos;
+            //    sliderButtonXcurrentStart += diff;
+            //    sliderButtonXcurrentEnd += diff;
+
+            //    float prevNormalizedX = 2.0f * static_cast<float>(prevXpos) / wWidth - 1.0f;
+            //    float currentNormalizedX = 2.0f * static_cast<float>(xpos) / wWidth - 1.0f;
+
+            //    // Calculate the difference in normalized space
+            //    diff = currentNormalizedX - prevNormalizedX;
+
+            //    // Update the slider's value, clamped within the range
+            //    if (moveValue + diff < minSliderValue)
+            //    {
+            //        moveValue = minSliderValue;
+            //    }
+            //    else if (moveValue + diff > maxSliderValue)
+            //    {
+            //        moveValue = maxSliderValue;
+            //    }
+            //    else
+            //    {
+            //        moveValue += diff;
+            //        std::cout << "MoveValue:" << moveValue << std::endl;
+            //    }
+
+            //    if (moveValue > 0.356 || moveValue < 0)
+            //    {
+            //        moveValue = oldMoveValue;
+            //        sliderButtonXcurrentStart -= diff;
+            //        sliderButtonXcurrentEnd -= diff;
+            //    }
+            //    oldMoveValue = moveValue;
+            //    glUniform1f(uSliderPosition, moveValue);
+            //    
+            //}
         }
 
         if (mouseState == GLFW_PRESS && !wasMousePressed)
@@ -310,23 +417,24 @@ int main(void)
         else if (mouseState == GLFW_RELEASE)
         {
             wasMousePressed = false;
+            holdingSlider = false;
         }
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         {
             glfwSetWindowShouldClose(window, GL_TRUE);
         }
-        if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS && !upPressed)
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS && !upPressed)
         {
             upPressed = true;
             if (vibrationIntensity < 100)
                 vibrationIntensity = vibrationIntensity + 10;
                 std::cout << vibrationIntensity << std::endl;
         }
-        else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_RELEASE)
+        else if (glfwGetKey(window, GLFW_KEY_W) == GLFW_RELEASE)
         {
             upPressed = false;
         }
-        if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS && !downPressed)
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS && !downPressed)
         {
             downPressed = true;
             if (vibrationIntensity >= 10)
@@ -335,34 +443,41 @@ int main(void)
                 std::cout << vibrationIntensity << std::endl;
             }
         }
-        else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_RELEASE)
+        else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_RELEASE)
         {
             downPressed = false;
         }
-        /*if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+
+        if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS && !antennaMoving)
         {
-            float currentTime = glfwGetTime();
-            if (currentTime - lastTime > 0.02)
+            if (antennaMove < -0.01)
             {
-                if (scalePos >= 0.001)
-                {
-                    scalePos -= 0.01;
-                }
-                lastTime = currentTime;
+                antennaMoving = true;
+                antennaMove += 0.01;
+                //if (antennaMove >= 0.2)
+                    // Turn on state
             }
         }
-        if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+        else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_RELEASE)
         {
-            float currentTime = glfwGetTime();
-            if (currentTime - lastTime > 0.02)
+            antennaMoving = false;
+        }
+        if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+        {
+            if (antennaMove > -0.4)
             {
-                if (scalePos < 0.585)
-                {
-                    scalePos += 0.01;
-                }
-                lastTime = currentTime;
+                std::cout << "Antenna moving down" << std::endl;
+                antennaMoving = true;
+                antennaMove -= 0.01;
+                std::cout << antennaMove << std::endl;
+                //if (antennaMove < 0.2)
+                    // Turn off state
             }
-        }*/
+        }
+        else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_RELEASE)
+        {
+            antennaMoving = false;
+        }
         
         glClearColor(0.5, 0.5, 0.5, 1.0);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -386,7 +501,9 @@ int main(void)
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, membraneTexture);
         unsigned uVibrationIntensity = glGetUniformLocation(membraneShader, "uVibrationIntensity");
-        glUniform1f(uVibrationIntensity, sin(vibrationIntensity * glfwGetTime()));
+        // Popraviti ovaj deo
+        glUniform1f(uVibrationIntensity, sin(vibrationIntensity * slider.getMoveValue() * 10 * glfwGetTime()));
+        //glUniform1f(uVibrationIntensity, sin(moveValue * 200 * glfwGetTime()));
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(12 * sizeof(unsigned int)));
 
         glUseProgram(unifiedShader);
@@ -436,14 +553,24 @@ int main(void)
         glBindTexture(GL_TEXTURE_2D, sliderBarTexture);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(45 * sizeof(unsigned int)));
 
+        glUseProgram(sliderButtonShader);
         glBindTexture(GL_TEXTURE_2D, sliderButtonTexture);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(51 * sizeof(unsigned int)));
 
+        glUseProgram(unifiedShader);
         if (mode == RadioMode::AM)
             glBindTexture(GL_TEXTURE_2D, modeAMTexture);
         else
             glBindTexture(GL_TEXTURE_2D, modeFMTexture);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(57 * sizeof(unsigned int)));
+
+        glBindTexture(GL_TEXTURE_2D, antennaStaticTexture);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(63 * sizeof(unsigned int)));
+
+        glUseProgram(antennaShader);
+        glUniform1f(uAntennaPosition, antennaMove);
+        glBindTexture(GL_TEXTURE_2D, antennaDynamicTexture);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(63 * sizeof(unsigned int)));
 
         glBindTexture(GL_TEXTURE_2D, 0);
         glBindVertexArray(0);
@@ -451,11 +578,15 @@ int main(void)
 
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        prevXpos = xpos;
+        prevYpos = ypos;
     }
 
 
     glDeleteTextures(1, &radioTexture);
     glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
     glDeleteVertexArrays(1, &VAO);
     glDeleteProgram(unifiedShader);
 
