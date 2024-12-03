@@ -18,6 +18,9 @@
 #include <chrono>
 #include "headers/frame_limitter.h"
 #include "headers/slider.h"
+#include "headers/text_renderer.h"
+#include <glm/ext/matrix_clip_space.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 unsigned int compileShader(GLenum type, const char* source);
 unsigned int createShader(const char* vsSource, const char* fsSource);
@@ -76,6 +79,7 @@ int main(void)
     unsigned int powerIndicatorShader = createShader("shaders/power-indicator.vert", "shaders/power-indicator.frag");
     unsigned int sliderButtonShader = createShader("shaders/slider-button.vert", "shaders/slider-button.frag");
     unsigned int antennaShader = createShader("shaders/antenna.vert", "shaders/antenna.frag");
+    unsigned int glyphShader = createShader("shaders/glyph.vert", "shaders/glyph.frag");
 
     float vertices[] =
     {   //X    Y      S    T 
@@ -325,6 +329,19 @@ int main(void)
     double lastTime = glfwGetTime();
 
     Slider slider = Slider(sliderButtonXcurrentStart, sliderButtonXcurrentEnd, sliderButtonYstart, sliderButtonYend, wWidth);
+    TextRenderer textRenderer = TextRenderer(wWidth, wHeight);
+    textRenderer.LoadFont("res/fonts/arial.ttf", 25);
+    glUseProgram(glyphShader);
+    glm::mat4 projection = glm::ortho(0.0f, (float)wWidth, 0.0f, (float)wHeight);
+    GLuint projectionLoc = glGetUniformLocation(glyphShader, "projection");
+    glUniform1f(glGetUniformLocation(glyphShader, "xOffset"), 400.0f);
+
+    if (projectionLoc != -1) {
+        // Pass the projection matrix to the shader
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+    } else {
+        std::cerr << "Projection uniform not found in shader!" << std::endl;
+    }
 
     while (!glfwWindowShouldClose(window))
     {
@@ -343,6 +360,7 @@ int main(void)
 
         if (mouseState == GLFW_PRESS)
         {
+            std::cout << xpos << ypos << std::endl;
             glfwGetCursorPos(window, &xpos, &ypos);
             if (!holdingSlider)
             {
@@ -571,6 +589,10 @@ int main(void)
         glUniform1f(uAntennaPosition, antennaMove);
         glBindTexture(GL_TEXTURE_2D, antennaDynamicTexture);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(63 * sizeof(unsigned int)));
+
+        glUseProgram(glyphShader);
+        //textRenderer.RenderText(glyphShader, "Radio AS/FM", 1023.0f, 450.0f, 1.2f, glm::vec3(0.3f, 0.3f, 1.0f));
+        textRenderer.RenderText(glyphShader, "Play Radio", 1023.0f, 450.0f, 1.2f, glm::vec3(0.3f, 0.3f, 1.0f));
 
         glBindTexture(GL_TEXTURE_2D, 0);
         glBindVertexArray(0);
