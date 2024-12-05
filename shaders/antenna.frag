@@ -1,11 +1,9 @@
 #version 330 core
 
-in vec2 chTex; //koordinate teksture
+in vec2 chTex;
 out vec4 outCol;
 
-uniform sampler2D uTex; //teksturna jedinica
-
-uniform float uTime;
+uniform sampler2D uTex;
 
 void main()
 {

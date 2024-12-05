@@ -1,4 +1,4 @@
-#include "../headers/frame_limitter.h"
+#include "../headers/FrameLimitter.h"
 #include <GLFW/glfw3.h>
 #include <thread>
 #include <chrono>
