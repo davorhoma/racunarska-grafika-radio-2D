@@ -95,6 +95,7 @@ int main(void)
     unsigned int sliderButtonShader = createShader("shaders/slider-button.vert", "shaders/slider-button.frag");
     unsigned int antennaShader = createShader("shaders/antenna.vert", "shaders/antenna.frag");
     unsigned int glyphShader = createShader("shaders/glyph.vert", "shaders/glyph.frag");
+    unsigned int soundProgressBarShader = createShader("shaders/sound-progress-bar.vert", "shaders/sound-progress-bar.frag");
 
     float vertices[] =
     {   //X    Y      S    T 
@@ -168,7 +169,19 @@ int main(void)
         0.65, 0.3,        0.0, 0.0,
         0.70, 0.3,        1.0, 0.0,
         0.65, 0.8,        0.0, 1.0,
-        0.70, 0.8,        1.0, 1.0
+        0.70, 0.8,        1.0, 1.0,
+
+        // Sound progress bar
+        0.04, -0.20,      0.0, 0.0,
+        0.3 , -0.20,      1.0, 0.0,
+        0.04, -0.14,      0.0, 1.0,
+        0.3 , -0.14,      1.0, 1.0,
+
+        // Sound on/off icon
+       -0.02, -0.22,      0.0, 0.0,
+        0.02, -0.22,      1.0, 0.0,
+       -0.02, -0.15,      0.0, 1.0,
+        0.02, -0.15,      1.0, 1.0
     };
 
     unsigned int indices[] = {
@@ -207,7 +220,13 @@ int main(void)
         40, 41, 42,
 
         43, 44, 45,
-        44, 45, 46
+        44, 45, 46,
+
+        47, 48, 49,
+        48, 49, 50,
+
+        51, 52, 53,
+        52, 53, 54
     };
     // notacija koordinata za teksture je STPQ u GLSL-u (ali se cesto koristi UV za 2D teksture i STR za 3D)
     //ST koordinate u nizu tjemena su koordinate za teksturu i krecu se od 0 do 1, gdje je 0, 0 donji lijevi ugao teksture
@@ -250,6 +269,9 @@ int main(void)
         "res/antenna2.png",
         "res/antenna-static.png",
         "res/antenna-dynamic.png",
+        "res/sound-progress-bar.png",
+        "res/sound-on-icon.png",
+        "res/sound-off-icon.png"
     };
 
     unsigned radioTexture = loadImageToTexture(texturePaths[0]);
@@ -282,6 +304,12 @@ int main(void)
     setTextureParameters(antennaStaticTexture, 13);
     unsigned antennaDynamicTexture = loadImageToTexture(texturePaths[14]);
     setTextureParameters(antennaDynamicTexture, 14);
+    unsigned soundProgressBarTexture = loadImageToTexture(texturePaths[15]);
+    setTextureParameters(soundProgressBarTexture, 15);
+    unsigned soundOnIconTexture = loadImageToTexture(texturePaths[16]);
+    setTextureParameters(soundOnIconTexture, 16);
+    unsigned soundOffIconTexture = loadImageToTexture(texturePaths[17]);
+    setTextureParameters(soundOffIconTexture, 17);
 
     glUseProgram(unifiedShader);
     unsigned uTexLoc = glGetUniformLocation(unifiedShader, "uTex");
@@ -369,12 +397,13 @@ int main(void)
         std::cerr << "Projection uniform not found in shader!" << std::endl;
     }
 
+    unsigned int soundProgressBarMaxPosLoc = glGetUniformLocation(soundProgressBarShader, "maxPos");
+
     while (!glfwWindowShouldClose(window))
     {
         limitFrameRate(FRAME_DURATION, &lastTime);
 
         int mouseState = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
-        //double xCurrentpos, yCurrentpos;
         glfwGetCursorPos(window, &xpos, &ypos);
 
         if (firstFrame)
@@ -406,47 +435,6 @@ int main(void)
             {
                 glUniform1f(uSliderPosition, slider.getMoveValue());
             }
-            //if (xpos >= sliderButtonXcurrentStart && xpos <= sliderButtonXcurrentEnd && ypos >= sliderButtonYstart && ypos <= sliderButtonYend || holdingSlider)
-            //{
-            //    holdingSlider = true;
-            //    //glUseProgram(sliderButtonShader);
-            //    //unsigned uSliderPosition = glGetUniformLocation(sliderButtonShader, "uSlider");
-            //    //std::cout << uSliderPosition << xpos - sliderButtonXstart << std::endl;
-            //    float diff = xpos - prevXpos;
-            //    sliderButtonXcurrentStart += diff;
-            //    sliderButtonXcurrentEnd += diff;
-
-            //    float prevNormalizedX = 2.0f * static_cast<float>(prevXpos) / wWidth - 1.0f;
-            //    float currentNormalizedX = 2.0f * static_cast<float>(xpos) / wWidth - 1.0f;
-
-            //    // Calculate the difference in normalized space
-            //    diff = currentNormalizedX - prevNormalizedX;
-
-            //    // Update the slider's value, clamped within the range
-            //    if (moveValue + diff < minSliderValue)
-            //    {
-            //        moveValue = minSliderValue;
-            //    }
-            //    else if (moveValue + diff > maxSliderValue)
-            //    {
-            //        moveValue = maxSliderValue;
-            //    }
-            //    else
-            //    {
-            //        moveValue += diff;
-            //        std::cout << "MoveValue:" << moveValue << std::endl;
-            //    }
-
-            //    if (moveValue > 0.356 || moveValue < 0)
-            //    {
-            //        moveValue = oldMoveValue;
-            //        sliderButtonXcurrentStart -= diff;
-            //        sliderButtonXcurrentEnd -= diff;
-            //    }
-            //    oldMoveValue = moveValue;
-            //    glUniform1f(uSliderPosition, moveValue);
-            //    
-            //}
         }
 
         if (mouseState == GLFW_PRESS && !wasMousePressed)
@@ -502,8 +490,6 @@ int main(void)
             {
                 antennaMoving = true;
                 antennaMove += 0.01;
-                //if (antennaMove >= -0.2)
-                    // Turn on state
             }
         }
         else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_RELEASE)
@@ -518,8 +504,6 @@ int main(void)
                 antennaMoving = true;
                 antennaMove -= 0.01;
                 std::cout << antennaMove << std::endl;
-                //if (antennaMove < -0.2)
-                    // Turn off state
             }
         }
         else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_RELEASE)
@@ -651,6 +635,22 @@ int main(void)
         glUniform1f(uAntennaPosition, antennaMove);
         glBindTexture(GL_TEXTURE_2D, antennaDynamicTexture);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(63 * sizeof(unsigned int)));
+
+        if (isTurnedOn)
+        {
+            glUseProgram(soundProgressBarShader);
+            int currentSliderButtonEnd = slider.getSliderButtonXcurrentEnd();
+            glUniform1i(soundProgressBarMaxPosLoc, currentSliderButtonEnd);
+            glBindTexture(GL_TEXTURE_2D, soundProgressBarTexture);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(69 * sizeof(unsigned int)));
+
+            glUseProgram(unifiedShader);
+            if (slider.getMoveValue() > 0.01)
+                glBindTexture(GL_TEXTURE_2D, soundOnIconTexture);
+            else
+                glBindTexture(GL_TEXTURE_2D, soundOffIconTexture);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(75 * sizeof(unsigned int)));
+        }
 
         if (currentRadioStation > -1)
         {

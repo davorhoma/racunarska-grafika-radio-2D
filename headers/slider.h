@@ -17,6 +17,7 @@ public:
     Slider(int startX, int endX, int startY, int endY, unsigned int width);
     bool detectSliderMove(double xpos, double ypos, double prevXpos, bool* holdingSlider);
     float getMoveValue();
+    int getSliderButtonXcurrentEnd();
 };
 
 #endif // CLASSSlider_H

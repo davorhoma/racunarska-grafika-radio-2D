@@ -63,3 +63,8 @@ float Slider::getMoveValue()
 {
     return moveValue;
 }
+
+int Slider::getSliderButtonXcurrentEnd()
+{
+    return sliderButtonXcurrentEnd;
+}

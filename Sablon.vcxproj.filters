@@ -51,6 +51,8 @@
     <None Include="shaders\antenna.frag" />
     <None Include="shaders\glyph.vert" />
     <None Include="shaders\glyph.frag" />
+    <None Include="shaders\sound-progress-bar.vert" />
+    <None Include="shaders\sound-progress-bar.frag" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="headers\frame_limitter.h">

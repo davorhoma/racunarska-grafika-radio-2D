@@ -167,6 +167,8 @@
     <None Include="shaders\scale-pointer.vert" />
     <None Include="shaders\slider-button.frag" />
     <None Include="shaders\slider-button.vert" />
+    <None Include="shaders\sound-progress-bar.frag" />
+    <None Include="shaders\sound-progress-bar.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="headers\frame_limitter.h" />
