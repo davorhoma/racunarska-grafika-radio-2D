@@ -76,6 +76,7 @@ bool TextRenderer::LoadFont(const std::string& fontPath, int fontSize) {
 
     FT_Done_Face(face);
     FT_Done_FreeType(ft);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     return true;
 }

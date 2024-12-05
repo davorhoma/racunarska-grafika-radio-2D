@@ -10,7 +10,7 @@ uniform float uTime;
 void main()
 {
 	outCol = texture(uTex, vec2(chTex.s, chTex.t));
-	if (outCol.a < 0.1)
+	if (outCol.a < 0.9)
 	{
 		discard;
 	}

@@ -253,7 +253,6 @@ int main(void)
         "res/slider-button.png",
         "res/mode-am.png",
         "res/mode-fm.png",
-        "res/antenna2.png",
         "res/antenna-static.png",
         "res/antenna-dynamic.png",
         "res/sound-progress-bar.png",
@@ -285,24 +284,16 @@ int main(void)
     setTextureParameters(modeAMTexture, 10);
     unsigned modeFMTexture = loadImageToTexture(texturePaths[11]);
     setTextureParameters(modeFMTexture, 11);
-    unsigned antennaTexture = loadImageToTexture(texturePaths[12]);
-    setTextureParameters(antennaTexture, 12);
-    unsigned antennaStaticTexture = loadImageToTexture(texturePaths[13]);
-    setTextureParameters(antennaStaticTexture, 13);
-    unsigned antennaDynamicTexture = loadImageToTexture(texturePaths[14]);
-    setTextureParameters(antennaDynamicTexture, 14);
-    unsigned soundProgressBarTexture = loadImageToTexture(texturePaths[15]);
-    setTextureParameters(soundProgressBarTexture, 15);
-    unsigned soundOnIconTexture = loadImageToTexture(texturePaths[16]);
-    setTextureParameters(soundOnIconTexture, 16);
-    unsigned soundOffIconTexture = loadImageToTexture(texturePaths[17]);
-    setTextureParameters(soundOffIconTexture, 17);
-
-    glUseProgram(unifiedShader);
-    unsigned uTexLoc = glGetUniformLocation(unifiedShader, "uTex");
-    glUniform1i(uTexLoc, 0);
-    unsigned uTexLoc1 = glGetUniformLocation(unifiedShader, "uTex1");
-    glUniform1i(uTexLoc1, 1);
+    unsigned antennaStaticTexture = loadImageToTexture(texturePaths[12]);
+    setTextureParameters(antennaStaticTexture, 12);
+    unsigned antennaDynamicTexture = loadImageToTexture(texturePaths[13]);
+    setTextureParameters(antennaDynamicTexture, 13);
+    unsigned soundProgressBarTexture = loadImageToTexture(texturePaths[14]);
+    setTextureParameters(soundProgressBarTexture, 14);
+    unsigned soundOnIconTexture = loadImageToTexture(texturePaths[15]);
+    setTextureParameters(soundOnIconTexture, 15);
+    unsigned soundOffIconTexture = loadImageToTexture(texturePaths[16]);
+    setTextureParameters(soundOffIconTexture, 16);
 
     glUseProgram(membraneShader);
     unsigned uMembraneTexLoc = glGetUniformLocation(membraneShader, "uMembraneTex");
@@ -525,7 +516,6 @@ int main(void)
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(6 * sizeof(unsigned int)));
 
         glUseProgram(membraneShader);
-        glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, membraneTexture);
         unsigned uVibrationIntensity = glGetUniformLocation(membraneShader, "uVibrationIntensity");
         vibrationIntensity = 100;
@@ -536,7 +526,6 @@ int main(void)
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(12 * sizeof(unsigned int)));
 
         glUseProgram(unifiedShader);
-        glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, coverTexture);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(18 * sizeof(unsigned int)));
 
