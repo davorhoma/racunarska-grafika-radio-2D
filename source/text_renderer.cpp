@@ -82,7 +82,6 @@ bool TextRenderer::LoadFont(const std::string& fontPath, int fontSize) {
 }
 
 void TextRenderer::RenderText(unsigned int shader, const std::string& text, float x, float y, float scale, glm::vec3 color) {
-    //glUseProgram(*shader);
     UpdateTextPosition();
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
