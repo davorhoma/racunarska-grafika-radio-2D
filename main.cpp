@@ -75,9 +75,9 @@ int main(void)
     float vertices[] =
     {   //X    Y      S    T 
         // Radio coordinates
-       -0.8, -0.4,   0.0, 0.0, //drugo tjeme
-        0.8, -0.4,   1.0, 0.0,//prvo tjeme
-       -0.8,  0.4,   0.0, 1.0, //trece tjeme
+       -0.8, -0.4,   0.0, 0.0,
+        0.8, -0.4,   1.0, 0.0,
+       -0.8,  0.4,   0.0, 1.0,
         0.8,  0.4,   1.0, 1.0,
 
         // Signature coordinates
@@ -230,7 +230,7 @@ int main(void)
         "res/radio-cropped.png",
         "res/signature-text.png",
         "res/speaker-membrane.png",
-        "res/protective-cover2.png",
+        "res/protective-cover.png",
         "res/am-fm-scale.png",
         "res/radio-on.png",
         "res/radio-off.png",
