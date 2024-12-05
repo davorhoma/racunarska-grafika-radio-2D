@@ -22,6 +22,10 @@
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 unsigned int compileShader(GLenum type, const char* source);
 unsigned int createShader(const char* vsSource, const char* fsSource);
 static unsigned loadImageToTexture(const char* filePath); //Ucitavanje teksture, izdvojeno u funkciju
@@ -32,6 +36,17 @@ void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 enum RadioMode {
     AM = 0,
     FM = 1
+};
+
+//enum RadioState {
+//    OFF = 0,
+//    ON = 1
+//};
+
+struct RadioStation {
+    const char* name;
+    float minFrequency;
+    float maxFrequency;
 };
 
 float scalePos = 0.0;
@@ -83,30 +98,31 @@ int main(void)
 
     float vertices[] =
     {   //X    Y      S    T 
+        // Radio coordinates
        -0.8, -0.4,   0.0, 0.0, //drugo tjeme
         0.8, -0.4,   1.0, 0.0,//prvo tjeme
        -0.8,  0.4,   0.0, 1.0, //trece tjeme
         0.8,  0.4,   1.0, 1.0,
 
-        // Radio coordinates
+        // Signature coordinates
        -1.0, -1.0,   0.0, 0.0,
        -0.3, -1.0,   1.0, 0.0,
        -1.0, -0.9,   0.0, 1.0,
        -0.3, -0.9,   1.0, 1.0,
 
-        // Signature coordinates
+        // Speaker membrane coordinates
        -0.7, -0.35,   0.0, 0.0,
        -0.1, -0.35,   1.0, 0.0,
        -0.7,  0.25,   0.0, 1.0,
        -0.1,  0.25,   1.0, 1.0,
 
-        // Speaker membrane coordinates
+        // Protective cover coordinates
        -0.8, -0.35,   0.0, 0.0,
        -0.0, -0.35,   1.0, 0.0,
        -0.8,  0.25,   0.0, 1.0,
        -0.0,  0.25,   1.0, 1.0,
 
-        // Protective cover coordinates
+       // Scale coordinates
        -0.06, 0.0,    0.0, 0.0,
         0.69, 0.0,    1.0, 0.0,
        -0.06, 0.216,  0.0, 1.0,
@@ -308,6 +324,7 @@ int main(void)
     bool isTurnedOn = false, wasMousePressed = false;
     double xpos, ypos;
     RadioMode mode = RadioMode::AM;
+    //RadioState state = RadioState::OFF;
     //int sliderButtonXstart = 712;
     //int sliderButtonXend = 745;
     int sliderButtonYstart = 640;
@@ -324,6 +341,15 @@ int main(void)
 
     float antennaMove = -0.4;
     bool antennaMoving = false;
+    bool shouldScanStations = false;
+    int currentRadioStation = -1;
+    RadioStation radioStations[5] = {
+        {"Radio S", 0.0585, 2*0.0585},
+        {"Play Radio", 3*0.0585, 4*0.0585},
+        {"Radio AS FM", 5*0.0585, 6*0.0585},
+        {"Hit FM", 7*0.0585, 8*0.0585},
+        {"Naxi Radio", 9*0.0585, 10*0.0585}
+    };
 
     const double FRAME_DURATION = 1.0 / 60.0;
     double lastTime = glfwGetTime();
@@ -429,6 +455,10 @@ int main(void)
             if (xpos > 1212 && xpos < 1247 && ypos < 653 && ypos > 612)
             {
                 isTurnedOn = !isTurnedOn;
+                /*if (isTurnedOn) 
+                    state = RadioState::ON;
+                else 
+                    state = RadioState::OFF;*/
                 wasMousePressed = true;
             }
         }
@@ -472,7 +502,7 @@ int main(void)
             {
                 antennaMoving = true;
                 antennaMove += 0.01;
-                //if (antennaMove >= 0.2)
+                //if (antennaMove >= -0.2)
                     // Turn on state
             }
         }
@@ -488,13 +518,40 @@ int main(void)
                 antennaMoving = true;
                 antennaMove -= 0.01;
                 std::cout << antennaMove << std::endl;
-                //if (antennaMove < 0.2)
+                //if (antennaMove < -0.2)
                     // Turn off state
             }
         }
         else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_RELEASE)
         {
             antennaMoving = false;
+        }
+
+        shouldScanStations = antennaMove >= -0.2;
+
+        bool found = false;
+        if (isTurnedOn && shouldScanStations)
+        {
+            int numStations = sizeof(radioStations) / sizeof(radioStations[0]);
+            for (int i = 0; i < numStations; ++i) {
+                float lowerBound = (2 * i + 1) * 0.0585f;
+                float upperBound = (2 * i + 2) * 0.0585f;
+    
+                if (scalePos > radioStations[i].minFrequency && scalePos < radioStations[i].maxFrequency) {
+                    currentRadioStation = i;
+                    //textRenderer.RenderText(glyphShader, radioStations[i].name, 1023.0f, 450.0f, 1.2f, glm::vec3(0.3f, 0.3f, 1.0f));
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                currentRadioStation = -1;
+            }   
+        }
+        else
+        {
+            currentRadioStation = -1;
         }
         
         glClearColor(0.5, 0.5, 0.5, 1.0);
@@ -519,8 +576,13 @@ int main(void)
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, membraneTexture);
         unsigned uVibrationIntensity = glGetUniformLocation(membraneShader, "uVibrationIntensity");
+        vibrationIntensity = 100;
         // Popraviti ovaj deo
-        glUniform1f(uVibrationIntensity, sin(vibrationIntensity * slider.getMoveValue() * 10 * glfwGetTime()));
+        if (isTurnedOn && currentRadioStation != -1)
+            glUniform1f(uVibrationIntensity, 2 * sin(2.0f * M_PI * slider.getMoveValue() * 10 * glfwGetTime()));
+            //glUniform1f(uVibrationIntensity, vibrationIntensity * slider.getMoveValue() * sin(glfwGetTime()));
+        else
+            glUniform1f(uVibrationIntensity, 0);
         //glUniform1f(uVibrationIntensity, sin(moveValue * 200 * glfwGetTime()));
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(12 * sizeof(unsigned int)));
 
@@ -590,9 +652,11 @@ int main(void)
         glBindTexture(GL_TEXTURE_2D, antennaDynamicTexture);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(63 * sizeof(unsigned int)));
 
-        glUseProgram(glyphShader);
-        //textRenderer.RenderText(glyphShader, "Radio AS/FM", 1023.0f, 450.0f, 1.2f, glm::vec3(0.3f, 0.3f, 1.0f));
-        textRenderer.RenderText(glyphShader, "Play Radio", 1023.0f, 450.0f, 1.2f, glm::vec3(0.3f, 0.3f, 1.0f));
+        if (currentRadioStation > -1)
+        {
+            glUseProgram(glyphShader);
+            textRenderer.RenderText(glyphShader, radioStations[currentRadioStation].name, 1023.0f, 450.0f, 1.2f, glm::vec3(0.3f, 0.3f, 1.0f));
+        }
 
         glBindTexture(GL_TEXTURE_2D, 0);
         glBindVertexArray(0);
