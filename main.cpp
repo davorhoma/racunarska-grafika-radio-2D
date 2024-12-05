@@ -1,6 +1,3 @@
-//Autor: Nedeljko Tesanovic
-//Opis: Primjer upotrebe tekstura
-
 #define _CRT_SECURE_NO_WARNINGS
 
 #include <iostream>
@@ -10,8 +7,6 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-//stb_image.h je header-only biblioteka za ucitavanje tekstura.
-//Potrebno je definisati STB_IMAGE_IMPLEMENTATION prije njenog ukljucivanja
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include <thread>
@@ -28,7 +23,7 @@
 
 unsigned int compileShader(GLenum type, const char* source);
 unsigned int createShader(const char* vsSource, const char* fsSource);
-static unsigned loadImageToTexture(const char* filePath); //Ucitavanje teksture, izdvojeno u funkciju
+static unsigned loadImageToTexture(const char* filePath);
 void setTextureParameters(unsigned texture, const unsigned i);
 static void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos);
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
@@ -37,11 +32,6 @@ enum RadioMode {
     AM = 0,
     FM = 1
 };
-
-//enum RadioState {
-//    OFF = 0,
-//    ON = 1
-//};
 
 struct RadioStation {
     const char* name;
@@ -228,9 +218,6 @@ int main(void)
         51, 52, 53,
         52, 53, 54
     };
-    // notacija koordinata za teksture je STPQ u GLSL-u (ali se cesto koristi UV za 2D teksture i STR za 3D)
-    //ST koordinate u nizu tjemena su koordinate za teksturu i krecu se od 0 do 1, gdje je 0, 0 donji lijevi ugao teksture
-    //Npr. drugi red u nizu tjemena ce da mapira boje donjeg lijevog ugla teksture na drugo tjeme
     unsigned int stride = (2 + 2) * sizeof(float);
 
     unsigned int VAO;
@@ -313,11 +300,9 @@ int main(void)
 
     glUseProgram(unifiedShader);
     unsigned uTexLoc = glGetUniformLocation(unifiedShader, "uTex");
-    glUniform1i(uTexLoc, 0); // Indeks teksturne jedinice (sa koje teksture ce se citati boje)
+    glUniform1i(uTexLoc, 0);
     unsigned uTexLoc1 = glGetUniformLocation(unifiedShader, "uTex1");
     glUniform1i(uTexLoc1, 1);
-    //unsigned uTexLoc2 = glGetUniformLocation(unifiedShader, "uTex2");
-    //glUniform1i(uTexLoc2, 2);
 
     glUseProgram(membraneShader);
     unsigned uMembraneTexLoc = glGetUniformLocation(membraneShader, "uMembraneTex");
@@ -325,19 +310,11 @@ int main(void)
     unsigned uCoverTexLoc = glGetUniformLocation(membraneShader, "uCoverTex");
     glUniform1i(uCoverTexLoc, 1);
 
-    glUseProgram(scalePointerShader);
     unsigned uScalePosLoc = glGetUniformLocation(scalePointerShader, "uScalePos");
-
-    //glUseProgram(sliderButtonShader);
-    //unsigned uSliderPosition = glGetUniformLocation(sliderButtonShader, "uSlider");
-    unsigned uSliderPosition = glGetUniformLocation(sliderButtonShader, "uSlider");
-    
-    glUseProgram(antennaShader);
+    unsigned uSliderPosition = glGetUniformLocation(sliderButtonShader, "uSlider");    
     unsigned uAntennaPosition = glGetUniformLocation(antennaShader, "uAntennaPosition");
 
     glUseProgram(0);
-    //Odnosi se na glActiveTexture(GL_TEXTURE0) u render petlji
-    //Moguce je sabirati indekse, tj GL_TEXTURE5 se moze dobiti sa GL_TEXTURE0 + 5 , sto je korisno za iteriranje kroz petlje
 
     glfwSetScrollCallback(window, scrollCallback);
 
@@ -352,7 +329,6 @@ int main(void)
     bool isTurnedOn = false, wasMousePressed = false;
     double xpos, ypos;
     RadioMode mode = RadioMode::AM;
-    //RadioState state = RadioState::OFF;
     //int sliderButtonXstart = 712;
     //int sliderButtonXend = 745;
     int sliderButtonYstart = 640;
@@ -391,7 +367,6 @@ int main(void)
     glUniform1f(glGetUniformLocation(glyphShader, "xOffset"), 400.0f);
 
     if (projectionLoc != -1) {
-        // Pass the projection matrix to the shader
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
     } else {
         std::cerr << "Projection uniform not found in shader!" << std::endl;
@@ -430,7 +405,6 @@ int main(void)
             }
 
             glUseProgram(sliderButtonShader);
-            //moveValue += 0.0001;
             if (slider.detectSliderMove(xpos, ypos, prevXpos, &holdingSlider))
             {
                 glUniform1f(uSliderPosition, slider.getMoveValue());
@@ -440,13 +414,9 @@ int main(void)
         if (mouseState == GLFW_PRESS && !wasMousePressed)
         {
             glfwGetCursorPos(window, &xpos, &ypos);
-            if (xpos > 1212 && xpos < 1247 && ypos < 653 && ypos > 612)
+            if (xpos > 1212 && xpos < 1247 && ypos < 653 && ypos > 612 && !holdingSlider)
             {
                 isTurnedOn = !isTurnedOn;
-                /*if (isTurnedOn) 
-                    state = RadioState::ON;
-                else 
-                    state = RadioState::OFF;*/
                 wasMousePressed = true;
             }
         }
@@ -523,7 +493,6 @@ int main(void)
     
                 if (scalePos > radioStations[i].minFrequency && scalePos < radioStations[i].maxFrequency) {
                     currentRadioStation = i;
-                    //textRenderer.RenderText(glyphShader, radioStations[i].name, 1023.0f, 450.0f, 1.2f, glm::vec3(0.3f, 0.3f, 1.0f));
                     found = true;
                     break;
                 }
@@ -544,14 +513,13 @@ int main(void)
         glUseProgram(unifiedShader);
         glBindVertexArray(VAO);
 
-        glActiveTexture(GL_TEXTURE0); //tekstura koja se bind-uje nakon ovoga ce se koristiti sa SAMPLER2D uniformom u sejderu koja odgovara njenom indeksu
+        glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, radioTexture);
 
         unsigned uTime = glGetUniformLocation(unifiedShader, "uTime");
         glUniform1f(uTime, glfwGetTime());
 
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        //glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
         glBindTexture(GL_TEXTURE_2D, signatureTexture);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(6 * sizeof(unsigned int)));
@@ -561,13 +529,10 @@ int main(void)
         glBindTexture(GL_TEXTURE_2D, membraneTexture);
         unsigned uVibrationIntensity = glGetUniformLocation(membraneShader, "uVibrationIntensity");
         vibrationIntensity = 100;
-        // Popraviti ovaj deo
         if (isTurnedOn && currentRadioStation != -1)
             glUniform1f(uVibrationIntensity, 2 * sin(2.0f * M_PI * slider.getMoveValue() * 10 * glfwGetTime()));
-            //glUniform1f(uVibrationIntensity, vibrationIntensity * slider.getMoveValue() * sin(glfwGetTime()));
         else
             glUniform1f(uVibrationIntensity, 0);
-        //glUniform1f(uVibrationIntensity, sin(moveValue * 200 * glfwGetTime()));
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(12 * sizeof(unsigned int)));
 
         glUseProgram(unifiedShader);
@@ -761,10 +726,8 @@ static unsigned loadImageToTexture(const char* filePath) {
     unsigned char* ImageData = stbi_load(filePath, &TextureWidth, &TextureHeight, &TextureChannels, 0);
     if (ImageData != NULL)
     {
-        //Slike se osnovno ucitavaju naopako pa se moraju ispraviti da budu uspravne
         stbi__vertical_flip(ImageData, TextureWidth, TextureHeight, TextureChannels);
 
-        // Provjerava koji je format boja ucitane slike
         GLint InternalFormat = -1;
         switch (TextureChannels) {
         case 1: InternalFormat = GL_RED; break;
@@ -779,7 +742,6 @@ static unsigned loadImageToTexture(const char* filePath) {
         glBindTexture(GL_TEXTURE_2D, Texture);
         glTexImage2D(GL_TEXTURE_2D, 0, InternalFormat, TextureWidth, TextureHeight, 0, InternalFormat, GL_UNSIGNED_BYTE, ImageData);
         glBindTexture(GL_TEXTURE_2D, 0);
-        // oslobadjanje memorije zauzete sa stbi_load posto vise nije potrebna
         stbi_image_free(ImageData);
         return Texture;
     }
