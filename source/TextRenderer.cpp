@@ -1,11 +1,10 @@
-#include "../headers/text_renderer.h"
+#include "../headers/TextRenderer.h"
 #include <iostream>
 #include <GLFW/glfw3.h>
 
 TextRenderer::TextRenderer(int screenWidth, int screenHeight)
     : screenWidth(screenWidth), screenHeight(screenHeight) {
     lastUpdateTime = glfwGetTime();
-    // Initialize OpenGL buffers
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
 
@@ -21,7 +20,6 @@ TextRenderer::TextRenderer(int screenWidth, int screenHeight)
 }
 
 bool TextRenderer::LoadFont(const std::string& fontPath, int fontSize) {
-    // Initialize FreeType
     FT_Library ft;
     if (FT_Init_FreeType(&ft)) {
         std::cerr << "ERROR::FREETYPE: Could not init FreeType Library" << std::endl;
@@ -37,7 +35,7 @@ bool TextRenderer::LoadFont(const std::string& fontPath, int fontSize) {
 
     FT_Set_Pixel_Sizes(face, 0, fontSize);
 
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1); // Disable byte-alignment restriction
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
     for (unsigned char c = 0; c < 128; c++) {
         if (FT_Load_Char(face, c, FT_LOAD_RENDER)) {
@@ -109,7 +107,6 @@ void TextRenderer::RenderText(unsigned int shader, const std::string& text, floa
         float ypos = y - (ch.Size.y - ch.Bearing.y) * scale;
         float w = ch.Size.x * scale;
         float h = ch.Size.y * scale;
-        //std::cout << "Xpos: " << xpos << ", Ypos" << ypos << std::endl;
 
         if (xpos < 700.0f)
         {
@@ -127,7 +124,6 @@ void TextRenderer::RenderText(unsigned int shader, const std::string& text, floa
             { xpos + w, ypos + h, 1.0f, 0.0f }
         };
 
-        //std::cout << "Rendered" << std::endl;
         glBindTexture(GL_TEXTURE_2D, ch.TextureID);
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
@@ -135,11 +131,10 @@ void TextRenderer::RenderText(unsigned int shader, const std::string& text, floa
 
         glDrawArrays(GL_TRIANGLES, 0, 6);
 
-        x += (ch.Advance >> 6) * scale; // Advance cursor
+        x += (ch.Advance >> 6) * scale;
 
         if (c == text.end() - 1 && ch.offset == shiftValue)
         {
-            //textOffset = 0;
             shifted = true;
         }
     }
@@ -159,9 +154,4 @@ void TextRenderer::UpdateTextPosition() {
     lastUpdateTime = currentTime;
 
     textOffset -= speed * deltaTime;
-
-    // Reset the offset when the text goes off-screen
-    //if (textOffset < -textWidth) { // `textWidth` is the width of the text
-        //textOffset = screenWidth; // Reset to the right side of the screen
-    //}
 }

@@ -10,29 +10,23 @@
 #include FT_FREETYPE_H
 
 struct Character {
-    unsigned int TextureID;  // ID handle of the glyph texture
-    glm::ivec2 Size;         // Size of glyph
-    glm::ivec2 Bearing;      // Offset from baseline to left/top of glyph
-    unsigned int Advance;    // Horizontal offset to advance to next glyph
+    unsigned int TextureID;
+    glm::ivec2 Size;
+    glm::ivec2 Bearing;
+    unsigned int Advance;
     int offset;
 };
 
 class TextRenderer {
 public:
-    // Constructor
     TextRenderer(int screenWidth, int screenHeight);
-
-    // Initialize FreeType and load the font
     bool LoadFont(const std::string& fontPath, int fontSize);
-
-    // Render a string of text
     void RenderText(unsigned int shader, const std::string& text, float x, float y, float scale, glm::vec3 color);
-
     void UpdateTextPosition();
 private:
-    std::map<char, Character> Characters; // Map of characters to their data
-    unsigned int VAO, VBO;                // Vertex Array Object and Vertex Buffer Object
-    int screenWidth, screenHeight;        // Screen dimensions
+    std::map<char, Character> Characters;
+    unsigned int VAO, VBO;
+    int screenWidth, screenHeight;
     double lastUpdateTime;
     float speed = 100.0f;
     float textOffset = 0.0f;

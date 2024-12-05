@@ -147,10 +147,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="source\frameLimitter.cpp" />
-    <ClCompile Include="source\radio_mode_manager.cpp" />
-    <ClCompile Include="source\slider.cpp" />
-    <ClCompile Include="source\text_renderer.cpp" />
+    <ClCompile Include="source\AntennaManager.cpp" />
+    <ClCompile Include="source\FrameLimitter.cpp" />
+    <ClCompile Include="source\RadioStationProgram.cpp" />
+    <ClCompile Include="source\RadioModeManager.cpp" />
+    <ClCompile Include="source\ShaderProgram.cpp" />
+    <ClCompile Include="source\Slider.cpp" />
+    <ClCompile Include="source\TextureLoader.cpp" />
+    <ClCompile Include="source\TextRenderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\antenna.frag" />
@@ -172,10 +176,14 @@
     <None Include="shaders\sound-progress-bar.vert" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="headers\frame_limitter.h" />
-    <ClInclude Include="headers\radio_mode_manager.h" />
-    <ClInclude Include="headers\slider.h" />
-    <ClInclude Include="headers\text_renderer.h" />
+    <ClInclude Include="headers\AntennaManager.h" />
+    <ClInclude Include="headers\FrameLimitter.h" />
+    <ClInclude Include="headers\RadioStationProgram.h" />
+    <ClInclude Include="headers\RadioModeManager.h" />
+    <ClInclude Include="headers\ShaderProgram.h" />
+    <ClInclude Include="headers\Slider.h" />
+    <ClInclude Include="headers\TextureLoader.h" />
+    <ClInclude Include="headers\TextRenderer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

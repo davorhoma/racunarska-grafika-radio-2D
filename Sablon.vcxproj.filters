@@ -21,16 +21,28 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="source\frameLimitter.cpp">
+    <ClCompile Include="source\FrameLimitter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="source\slider.cpp">
+    <ClCompile Include="source\Slider.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="source\text_renderer.cpp">
+    <ClCompile Include="source\TextRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="source\radio_mode_manager.cpp">
+    <ClCompile Include="source\RadioModeManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\ShaderProgram.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\TextureLoader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\AntennaManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="source\RadioStationProgram.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -58,16 +70,28 @@
     <None Include="shaders\sound-progress-bar.frag" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="headers\frame_limitter.h">
+    <ClInclude Include="headers\FrameLimitter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="headers\slider.h">
+    <ClInclude Include="headers\Slider.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="headers\text_renderer.h">
+    <ClInclude Include="headers\TextRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="headers\radio_mode_manager.h">
+    <ClInclude Include="headers\RadioModeManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\ShaderProgram.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\TextureLoader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\AntennaManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\RadioStationProgram.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

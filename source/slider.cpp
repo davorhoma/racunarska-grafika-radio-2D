@@ -1,4 +1,4 @@
-#include "../headers/slider.h"
+#include "../headers/Slider.h"
 #include <stdio.h>
 #include <iostream>
 
@@ -27,10 +27,8 @@ bool Slider::detectSliderMove(double xpos, double ypos, double prevXpos, bool* h
         float prevNormalizedX = 2.0f * static_cast<float>(prevXpos) / wWidth - 1.0f;
         float currentNormalizedX = 2.0f * static_cast<float>(xpos) / wWidth - 1.0f;
 
-        // Calculate the difference in normalized space
         float diffNormalized = currentNormalizedX - prevNormalizedX;
 
-        // Update the slider's value, clamped within the range
         if (moveValue + diffNormalized < minSliderValue)
         {
             moveValue = minSliderValue;
@@ -42,7 +40,6 @@ bool Slider::detectSliderMove(double xpos, double ypos, double prevXpos, bool* h
         else
         {
             moveValue += diffNormalized;
-            //std::cout << "MoveValue:" << moveValue << std::endl;
         }
 
         if (moveValue > 0.356 || moveValue < 0)
