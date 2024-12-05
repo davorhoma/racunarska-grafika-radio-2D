@@ -148,6 +148,7 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="source\frameLimitter.cpp" />
+    <ClCompile Include="source\radio_mode_manager.cpp" />
     <ClCompile Include="source\slider.cpp" />
     <ClCompile Include="source\text_renderer.cpp" />
   </ItemGroup>
@@ -172,6 +173,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="headers\frame_limitter.h" />
+    <ClInclude Include="headers\radio_mode_manager.h" />
     <ClInclude Include="headers\slider.h" />
     <ClInclude Include="headers\text_renderer.h" />
   </ItemGroup>

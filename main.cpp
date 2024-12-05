@@ -20,6 +20,7 @@
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+#include "headers/radio_mode_manager.h"
 
 unsigned int compileShader(GLenum type, const char* source);
 unsigned int createShader(const char* vsSource, const char* fsSource);
@@ -27,11 +28,6 @@ static unsigned loadImageToTexture(const char* filePath);
 void setTextureParameters(unsigned texture, const unsigned i);
 static void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos);
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
-
-enum RadioMode {
-    AM = 0,
-    FM = 1
-};
 
 struct RadioStation {
     const char* name;
@@ -319,7 +315,7 @@ int main(void)
     //float scalePos = 0;
     bool isTurnedOn = false, wasMousePressed = false;
     double xpos, ypos;
-    RadioMode mode = RadioMode::AM;
+    //RadioMode mode = RadioMode::AM;
     //int sliderButtonXstart = 712;
     //int sliderButtonXend = 745;
     int sliderButtonYstart = 640;
@@ -345,6 +341,7 @@ int main(void)
         {"Hit FM", 7*0.0585, 8*0.0585},
         {"Naxi Radio", 9*0.0585, 10*0.0585}
     };
+    RadioModeManager radioModeManager = RadioModeManager();
 
     const double FRAME_DURATION = 1.0 / 60.0;
     double lastTime = glfwGetTime();
@@ -385,14 +382,15 @@ int main(void)
             glfwGetCursorPos(window, &xpos, &ypos);
             if (!holdingSlider)
             {
-                if (xpos >= 1072 && xpos <= 1165 && ypos >= 520 && ypos <= 559)
+                /*if (xpos >= 1072 && xpos <= 1165 && ypos >= 520 && ypos <= 559)
                 {
                     mode = RadioMode::AM;
                 }
                 if (xpos >= 1165 && xpos <= 1252 && ypos >= 520 && ypos <= 559)
                 {
                     mode = RadioMode::FM;
-                }
+                }*/
+                radioModeManager.setRadioMode(xpos, ypos);
             }
 
             glUseProgram(sliderButtonShader);
@@ -576,7 +574,7 @@ int main(void)
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(51 * sizeof(unsigned int)));
 
         glUseProgram(unifiedShader);
-        if (mode == RadioMode::AM)
+        if (radioModeManager.getMode() == RadioMode::AM)
             glBindTexture(GL_TEXTURE_2D, modeAMTexture);
         else
             glBindTexture(GL_TEXTURE_2D, modeFMTexture);
