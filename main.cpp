@@ -1,6 +1,3 @@
-//Autor: Nedeljko Tesanovic
-//Opis: Primjer upotrebe tekstura
-
 #define _CRT_SECURE_NO_WARNINGS
 
 #include <iostream>
@@ -10,14 +7,23 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-//stb_image.h je header-only biblioteka za ucitavanje tekstura.
-//Potrebno je definisati STB_IMAGE_IMPLEMENTATION prije njenog ukljucivanja
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#include <thread>
+#include <chrono>
+#include "headers/frame_limitter.h"
+#include "headers/slider.h"
+#include "headers/text_renderer.h"
+#include <glm/ext/matrix_clip_space.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 unsigned int compileShader(GLenum type, const char* source);
 unsigned int createShader(const char* vsSource, const char* fsSource);
-static unsigned loadImageToTexture(const char* filePath); //Ucitavanje teksture, izdvojeno u funkciju
+static unsigned loadImageToTexture(const char* filePath);
 void setTextureParameters(unsigned texture, const unsigned i);
 static void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos);
 void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
@@ -25,6 +31,12 @@ void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 enum RadioMode {
     AM = 0,
     FM = 1
+};
+
+struct RadioStation {
+    const char* name;
+    float minFrequency;
+    float maxFrequency;
 };
 
 float scalePos = 0.0;
@@ -70,33 +82,38 @@ int main(void)
     unsigned int membraneShader = createShader("shaders/membrane.vert", "shaders/membrane.frag");
     unsigned int scalePointerShader = createShader("shaders/scale-pointer.vert", "shaders/scale-pointer.frag");
     unsigned int powerIndicatorShader = createShader("shaders/power-indicator.vert", "shaders/power-indicator.frag");
+    unsigned int sliderButtonShader = createShader("shaders/slider-button.vert", "shaders/slider-button.frag");
+    unsigned int antennaShader = createShader("shaders/antenna.vert", "shaders/antenna.frag");
+    unsigned int glyphShader = createShader("shaders/glyph.vert", "shaders/glyph.frag");
+    unsigned int soundProgressBarShader = createShader("shaders/sound-progress-bar.vert", "shaders/sound-progress-bar.frag");
 
     float vertices[] =
     {   //X    Y      S    T 
+        // Radio coordinates
        -0.8, -0.4,   0.0, 0.0, //drugo tjeme
         0.8, -0.4,   1.0, 0.0,//prvo tjeme
        -0.8,  0.4,   0.0, 1.0, //trece tjeme
         0.8,  0.4,   1.0, 1.0,
 
-        // Radio coordinates
+        // Signature coordinates
        -1.0, -1.0,   0.0, 0.0,
        -0.3, -1.0,   1.0, 0.0,
        -1.0, -0.9,   0.0, 1.0,
        -0.3, -0.9,   1.0, 1.0,
 
-        // Signature coordinates
+        // Speaker membrane coordinates
        -0.7, -0.35,   0.0, 0.0,
        -0.1, -0.35,   1.0, 0.0,
        -0.7,  0.25,   0.0, 1.0,
        -0.1,  0.25,   1.0, 1.0,
 
-        // Speaker membrane coordinates
+        // Protective cover coordinates
        -0.8, -0.35,   0.0, 0.0,
        -0.0, -0.35,   1.0, 0.0,
        -0.8,  0.25,   0.0, 1.0,
        -0.0,  0.25,   1.0, 1.0,
 
-        // Protective cover coordinates
+       // Scale coordinates
        -0.06, 0.0,    0.0, 0.0,
         0.69, 0.0,    1.0, 0.0,
        -0.06, 0.216,  0.0, 1.0,
@@ -138,6 +155,23 @@ int main(void)
         0.43, -0.04,     0.0, 1.0,
         0.67, -0.04,     1.0, 1.0,
 
+        // Antenna
+        0.65, 0.3,        0.0, 0.0,
+        0.70, 0.3,        1.0, 0.0,
+        0.65, 0.8,        0.0, 1.0,
+        0.70, 0.8,        1.0, 1.0,
+
+        // Sound progress bar
+        0.04, -0.20,      0.0, 0.0,
+        0.3 , -0.20,      1.0, 0.0,
+        0.04, -0.14,      0.0, 1.0,
+        0.3 , -0.14,      1.0, 1.0,
+
+        // Sound on/off icon
+       -0.02, -0.22,      0.0, 0.0,
+        0.02, -0.22,      1.0, 0.0,
+       -0.02, -0.15,      0.0, 1.0,
+        0.02, -0.15,      1.0, 1.0
     };
 
     unsigned int indices[] = {
@@ -173,11 +207,17 @@ int main(void)
         36, 37, 38,
 
         39, 40, 41,
-        40, 41, 42
+        40, 41, 42,
+
+        43, 44, 45,
+        44, 45, 46,
+
+        47, 48, 49,
+        48, 49, 50,
+
+        51, 52, 53,
+        52, 53, 54
     };
-    // notacija koordinata za teksture je STPQ u GLSL-u (ali se cesto koristi UV za 2D teksture i STR za 3D)
-    //ST koordinate u nizu tjemena su koordinate za teksturu i krecu se od 0 do 1, gdje je 0, 0 donji lijevi ugao teksture
-    //Npr. drugi red u nizu tjemena ce da mapira boje donjeg lijevog ugla teksture na drugo tjeme
     unsigned int stride = (2 + 2) * sizeof(float);
 
     unsigned int VAO;
@@ -212,7 +252,12 @@ int main(void)
         "res/slider-bar.png",
         "res/slider-button.png",
         "res/mode-am.png",
-        "res/mode-fm.png"
+        "res/mode-fm.png",
+        "res/antenna-static.png",
+        "res/antenna-dynamic.png",
+        "res/sound-progress-bar.png",
+        "res/sound-on-icon.png",
+        "res/sound-off-icon.png"
     };
 
     unsigned radioTexture = loadImageToTexture(texturePaths[0]);
@@ -239,14 +284,16 @@ int main(void)
     setTextureParameters(modeAMTexture, 10);
     unsigned modeFMTexture = loadImageToTexture(texturePaths[11]);
     setTextureParameters(modeFMTexture, 11);
-
-    glUseProgram(unifiedShader);
-    unsigned uTexLoc = glGetUniformLocation(unifiedShader, "uTex");
-    glUniform1i(uTexLoc, 0); // Indeks teksturne jedinice (sa koje teksture ce se citati boje)
-    unsigned uTexLoc1 = glGetUniformLocation(unifiedShader, "uTex1");
-    glUniform1i(uTexLoc1, 1);
-    //unsigned uTexLoc2 = glGetUniformLocation(unifiedShader, "uTex2");
-    //glUniform1i(uTexLoc2, 2);
+    unsigned antennaStaticTexture = loadImageToTexture(texturePaths[12]);
+    setTextureParameters(antennaStaticTexture, 12);
+    unsigned antennaDynamicTexture = loadImageToTexture(texturePaths[13]);
+    setTextureParameters(antennaDynamicTexture, 13);
+    unsigned soundProgressBarTexture = loadImageToTexture(texturePaths[14]);
+    setTextureParameters(soundProgressBarTexture, 14);
+    unsigned soundOnIconTexture = loadImageToTexture(texturePaths[15]);
+    setTextureParameters(soundOnIconTexture, 15);
+    unsigned soundOffIconTexture = loadImageToTexture(texturePaths[16]);
+    setTextureParameters(soundOffIconTexture, 16);
 
     glUseProgram(membraneShader);
     unsigned uMembraneTexLoc = glGetUniformLocation(membraneShader, "uMembraneTex");
@@ -254,12 +301,11 @@ int main(void)
     unsigned uCoverTexLoc = glGetUniformLocation(membraneShader, "uCoverTex");
     glUniform1i(uCoverTexLoc, 1);
 
-    glUseProgram(scalePointerShader);
     unsigned uScalePosLoc = glGetUniformLocation(scalePointerShader, "uScalePos");
+    unsigned uSliderPosition = glGetUniformLocation(sliderButtonShader, "uSlider");    
+    unsigned uAntennaPosition = glGetUniformLocation(antennaShader, "uAntennaPosition");
 
     glUseProgram(0);
-    //Odnosi se na glActiveTexture(GL_TEXTURE0) u render petlji
-    //Moguce je sabirati indekse, tj GL_TEXTURE5 se moze dobiti sa GL_TEXTURE0 + 5 , sto je korisno za iteriranje kroz petlje
 
     glfwSetScrollCallback(window, scrollCallback);
 
@@ -271,37 +317,95 @@ int main(void)
     unsigned vibrationIntensity = 0;
     bool upPressed = false, downPressed = false;
     //float scalePos = 0;
-    float lastTime = 0.0f;
     bool isTurnedOn = false, wasMousePressed = false;
     double xpos, ypos;
     RadioMode mode = RadioMode::AM;
+    //int sliderButtonXstart = 712;
+    //int sliderButtonXend = 745;
+    int sliderButtonYstart = 640;
+    int sliderButtonYend = 663;
+    int sliderButtonXcurrentStart = 712;
+    int sliderButtonXcurrentEnd = 745;
+    float oldMoveValue = 0.0, moveValue = 0.0;
+
+    double prevXpos = 0.0, prevYpos = 0.0;
+    bool firstFrame = true;
+    const float minSliderValue = -1.0f;
+    const float maxSliderValue = 1.0f;
+    bool holdingSlider = false;
+
+    float antennaMove = -0.4;
+    bool antennaMoving = false;
+    bool shouldScanStations = false;
+    int currentRadioStation = -1;
+    RadioStation radioStations[5] = {
+        {"Radio S", 0.0585, 2*0.0585},
+        {"Play Radio", 3*0.0585, 4*0.0585},
+        {"Radio AS FM", 5*0.0585, 6*0.0585},
+        {"Hit FM", 7*0.0585, 8*0.0585},
+        {"Naxi Radio", 9*0.0585, 10*0.0585}
+    };
+
+    const double FRAME_DURATION = 1.0 / 60.0;
+    double lastTime = glfwGetTime();
+
+    Slider slider = Slider(sliderButtonXcurrentStart, sliderButtonXcurrentEnd, sliderButtonYstart, sliderButtonYend, wWidth);
+    TextRenderer textRenderer = TextRenderer(wWidth, wHeight);
+    textRenderer.LoadFont("res/fonts/arial.ttf", 25);
+    glUseProgram(glyphShader);
+    glm::mat4 projection = glm::ortho(0.0f, (float)wWidth, 0.0f, (float)wHeight);
+    GLuint projectionLoc = glGetUniformLocation(glyphShader, "projection");
+    glUniform1f(glGetUniformLocation(glyphShader, "xOffset"), 400.0f);
+
+    if (projectionLoc != -1) {
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+    } else {
+        std::cerr << "Projection uniform not found in shader!" << std::endl;
+    }
+
+    unsigned int soundProgressBarMaxPosLoc = glGetUniformLocation(soundProgressBarShader, "maxPos");
+
     while (!glfwWindowShouldClose(window))
     {
+        limitFrameRate(FRAME_DURATION, &lastTime);
+
         int mouseState = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
+        glfwGetCursorPos(window, &xpos, &ypos);
+
+        if (firstFrame)
+        {
+            prevXpos = xpos;
+            prevYpos = ypos;
+            firstFrame = false;
+        }
+
         if (mouseState == GLFW_PRESS)
         {
-            // -0.12, -0.04
-            // 1165, 559
+            std::cout << xpos << ypos << std::endl;
             glfwGetCursorPos(window, &xpos, &ypos);
-            std::cout << mode << std::endl;
-            std::cout << xpos << std::endl;
-            std::cout << ypos << std::endl;
-            if (xpos >= 1072 && xpos <= 1165 && ypos >= 520 && ypos <= 559)
+            if (!holdingSlider)
             {
-                mode = RadioMode::AM;
-                std::cout << mode << std::endl;
+                if (xpos >= 1072 && xpos <= 1165 && ypos >= 520 && ypos <= 559)
+                {
+                    mode = RadioMode::AM;
+                }
+                if (xpos >= 1165 && xpos <= 1252 && ypos >= 520 && ypos <= 559)
+                {
+                    mode = RadioMode::FM;
+                }
             }
-            if (xpos >= 1165 && xpos <= 1252 && ypos >= 520 && ypos <= 559)
+
+            glUseProgram(sliderButtonShader);
+            if (slider.detectSliderMove(xpos, ypos, prevXpos, &holdingSlider))
             {
-                mode = RadioMode::FM;
-                std::cout << mode << std::endl;
+                glUniform1f(uSliderPosition, slider.getMoveValue());
             }
         }
 
         if (mouseState == GLFW_PRESS && !wasMousePressed)
         {
             glfwGetCursorPos(window, &xpos, &ypos);
-            if (xpos > 1212 && xpos < 1247 && ypos < 653 && ypos > 612)
+            if (xpos > 1212 && xpos < 1247 && ypos < 653 && ypos > 612 && !holdingSlider)
             {
                 isTurnedOn = !isTurnedOn;
                 wasMousePressed = true;
@@ -310,23 +414,24 @@ int main(void)
         else if (mouseState == GLFW_RELEASE)
         {
             wasMousePressed = false;
+            holdingSlider = false;
         }
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         {
             glfwSetWindowShouldClose(window, GL_TRUE);
         }
-        if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS && !upPressed)
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS && !upPressed)
         {
             upPressed = true;
             if (vibrationIntensity < 100)
                 vibrationIntensity = vibrationIntensity + 10;
                 std::cout << vibrationIntensity << std::endl;
         }
-        else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_RELEASE)
+        else if (glfwGetKey(window, GLFW_KEY_W) == GLFW_RELEASE)
         {
             upPressed = false;
         }
-        if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS && !downPressed)
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS && !downPressed)
         {
             downPressed = true;
             if (vibrationIntensity >= 10)
@@ -335,34 +440,63 @@ int main(void)
                 std::cout << vibrationIntensity << std::endl;
             }
         }
-        else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_RELEASE)
+        else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_RELEASE)
         {
             downPressed = false;
         }
-        /*if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+
+        if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS && !antennaMoving)
         {
-            float currentTime = glfwGetTime();
-            if (currentTime - lastTime > 0.02)
+            if (antennaMove < -0.01)
             {
-                if (scalePos >= 0.001)
-                {
-                    scalePos -= 0.01;
-                }
-                lastTime = currentTime;
+                antennaMoving = true;
+                antennaMove += 0.01;
             }
         }
-        if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+        else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_RELEASE)
         {
-            float currentTime = glfwGetTime();
-            if (currentTime - lastTime > 0.02)
+            antennaMoving = false;
+        }
+        if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+        {
+            if (antennaMove > -0.4)
             {
-                if (scalePos < 0.585)
-                {
-                    scalePos += 0.01;
-                }
-                lastTime = currentTime;
+                std::cout << "Antenna moving down" << std::endl;
+                antennaMoving = true;
+                antennaMove -= 0.01;
+                std::cout << antennaMove << std::endl;
             }
-        }*/
+        }
+        else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_RELEASE)
+        {
+            antennaMoving = false;
+        }
+
+        shouldScanStations = antennaMove >= -0.2;
+
+        bool found = false;
+        if (isTurnedOn && shouldScanStations)
+        {
+            int numStations = sizeof(radioStations) / sizeof(radioStations[0]);
+            for (int i = 0; i < numStations; ++i) {
+                float lowerBound = (2 * i + 1) * 0.0585f;
+                float upperBound = (2 * i + 2) * 0.0585f;
+    
+                if (scalePos > radioStations[i].minFrequency && scalePos < radioStations[i].maxFrequency) {
+                    currentRadioStation = i;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                currentRadioStation = -1;
+            }   
+        }
+        else
+        {
+            currentRadioStation = -1;
+        }
         
         glClearColor(0.5, 0.5, 0.5, 1.0);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -370,27 +504,28 @@ int main(void)
         glUseProgram(unifiedShader);
         glBindVertexArray(VAO);
 
-        glActiveTexture(GL_TEXTURE0); //tekstura koja se bind-uje nakon ovoga ce se koristiti sa SAMPLER2D uniformom u sejderu koja odgovara njenom indeksu
+        glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, radioTexture);
 
         unsigned uTime = glGetUniformLocation(unifiedShader, "uTime");
         glUniform1f(uTime, glfwGetTime());
 
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        //glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
         glBindTexture(GL_TEXTURE_2D, signatureTexture);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(6 * sizeof(unsigned int)));
 
         glUseProgram(membraneShader);
-        glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, membraneTexture);
         unsigned uVibrationIntensity = glGetUniformLocation(membraneShader, "uVibrationIntensity");
-        glUniform1f(uVibrationIntensity, sin(vibrationIntensity * glfwGetTime()));
+        vibrationIntensity = 100;
+        if (isTurnedOn && currentRadioStation != -1)
+            glUniform1f(uVibrationIntensity, 2 * sin(2.0f * M_PI * slider.getMoveValue() * 10 * glfwGetTime()));
+        else
+            glUniform1f(uVibrationIntensity, 0);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(12 * sizeof(unsigned int)));
 
         glUseProgram(unifiedShader);
-        glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, coverTexture);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(18 * sizeof(unsigned int)));
 
@@ -436,14 +571,46 @@ int main(void)
         glBindTexture(GL_TEXTURE_2D, sliderBarTexture);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(45 * sizeof(unsigned int)));
 
+        glUseProgram(sliderButtonShader);
         glBindTexture(GL_TEXTURE_2D, sliderButtonTexture);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(51 * sizeof(unsigned int)));
 
+        glUseProgram(unifiedShader);
         if (mode == RadioMode::AM)
             glBindTexture(GL_TEXTURE_2D, modeAMTexture);
         else
             glBindTexture(GL_TEXTURE_2D, modeFMTexture);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(57 * sizeof(unsigned int)));
+
+        glBindTexture(GL_TEXTURE_2D, antennaStaticTexture);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(63 * sizeof(unsigned int)));
+
+        glUseProgram(antennaShader);
+        glUniform1f(uAntennaPosition, antennaMove);
+        glBindTexture(GL_TEXTURE_2D, antennaDynamicTexture);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(63 * sizeof(unsigned int)));
+
+        if (isTurnedOn)
+        {
+            glUseProgram(soundProgressBarShader);
+            int currentSliderButtonEnd = slider.getSliderButtonXcurrentEnd();
+            glUniform1i(soundProgressBarMaxPosLoc, currentSliderButtonEnd);
+            glBindTexture(GL_TEXTURE_2D, soundProgressBarTexture);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(69 * sizeof(unsigned int)));
+
+            glUseProgram(unifiedShader);
+            if (slider.getMoveValue() > 0.01)
+                glBindTexture(GL_TEXTURE_2D, soundOnIconTexture);
+            else
+                glBindTexture(GL_TEXTURE_2D, soundOffIconTexture);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)(75 * sizeof(unsigned int)));
+        }
+
+        if (currentRadioStation > -1)
+        {
+            glUseProgram(glyphShader);
+            textRenderer.RenderText(glyphShader, radioStations[currentRadioStation].name, 1023.0f, 450.0f, 1.2f, glm::vec3(0.3f, 0.3f, 1.0f));
+        }
 
         glBindTexture(GL_TEXTURE_2D, 0);
         glBindVertexArray(0);
@@ -451,11 +618,15 @@ int main(void)
 
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        prevXpos = xpos;
+        prevYpos = ypos;
     }
 
 
     glDeleteTextures(1, &radioTexture);
     glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
     glDeleteVertexArrays(1, &VAO);
     glDeleteProgram(unifiedShader);
 
@@ -544,10 +715,8 @@ static unsigned loadImageToTexture(const char* filePath) {
     unsigned char* ImageData = stbi_load(filePath, &TextureWidth, &TextureHeight, &TextureChannels, 0);
     if (ImageData != NULL)
     {
-        //Slike se osnovno ucitavaju naopako pa se moraju ispraviti da budu uspravne
         stbi__vertical_flip(ImageData, TextureWidth, TextureHeight, TextureChannels);
 
-        // Provjerava koji je format boja ucitane slike
         GLint InternalFormat = -1;
         switch (TextureChannels) {
         case 1: InternalFormat = GL_RED; break;
@@ -562,7 +731,6 @@ static unsigned loadImageToTexture(const char* filePath) {
         glBindTexture(GL_TEXTURE_2D, Texture);
         glTexImage2D(GL_TEXTURE_2D, 0, InternalFormat, TextureWidth, TextureHeight, 0, InternalFormat, GL_UNSIGNED_BYTE, ImageData);
         glBindTexture(GL_TEXTURE_2D, 0);
-        // oslobadjanje memorije zauzete sa stbi_load posto vise nije potrebna
         stbi_image_free(ImageData);
         return Texture;
     }
